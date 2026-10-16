@@ -4,7 +4,13 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { ListingInput, ListingPack, QuotaState } from "@/lib/types";
-import { downloadText, packToJson, packToMarkdown } from "@/lib/export";
+import {
+  copyText,
+  downloadText,
+  packToJson,
+  packToMarkdown,
+  packToTxt,
+} from "@/lib/export";
 import { Disclaimer } from "./Disclaimer";
 import { STORAGE_KEY } from "./WorkflowForm";
 
@@ -14,9 +20,12 @@ type Stored = {
   quota: QuotaState;
 };
 
+type CopyTarget = "copy" | "script" | null;
+
 export function ResultView() {
   const router = useRouter();
   const [data, setData] = useState<Stored | null>(null);
+  const [copied, setCopied] = useState<CopyTarget>(null);
 
   useEffect(() => {
     const raw = sessionStorage.getItem(STORAGE_KEY);
@@ -31,12 +40,24 @@ export function ResultView() {
     }
   }, [router]);
 
+  useEffect(() => {
+    if (!copied) return;
+    const t = window.setTimeout(() => setCopied(null), 1600);
+    return () => window.clearTimeout(t);
+  }, [copied]);
+
   if (!data) {
     return <p className="muted">加载结果…</p>;
   }
 
   const { pack, input } = data;
   const name = input.productName || "listing";
+
+  async function onCopy(target: "copy" | "script") {
+    const text = target === "copy" ? pack.copy : pack.script;
+    const ok = await copyText(text);
+    if (ok) setCopied(target);
+  }
 
   function exportMd() {
     downloadText(
@@ -54,6 +75,14 @@ export function ResultView() {
     );
   }
 
+  function exportTxt() {
+    downloadText(
+      `${name}-listing.txt`,
+      packToTxt(pack, name),
+      "text/plain;charset=utf-8",
+    );
+  }
+
   return (
     <div className="stack">
       <div className="result-meta">
@@ -66,12 +95,30 @@ export function ResultView() {
       </div>
 
       <section className="card section">
-        <h2>① 主图文案</h2>
+        <div className="section-head">
+          <h2>① 主图文案</h2>
+          <button
+            type="button"
+            className="secondary compact"
+            onClick={() => onCopy("copy")}
+          >
+            {copied === "copy" ? "已复制" : "一键复制文案"}
+          </button>
+        </div>
         <pre className="out">{pack.copy}</pre>
       </section>
 
       <section className="card section">
-        <h2>② 约 15 秒短视频脚本</h2>
+        <div className="section-head">
+          <h2>② 约 15 秒短视频脚本</h2>
+          <button
+            type="button"
+            className="secondary compact"
+            onClick={() => onCopy("script")}
+          >
+            {copied === "script" ? "已复制" : "一键复制脚本"}
+          </button>
+        </div>
         <pre className="out">{pack.script}</pre>
       </section>
 
@@ -92,6 +139,9 @@ export function ResultView() {
         </button>
         <button type="button" className="secondary" onClick={exportJson}>
           导出 JSON
+        </button>
+        <button type="button" className="secondary" onClick={exportTxt}>
+          导出 TXT
         </button>
         <Link href="/" className="secondary btn-link">
           再跑一次

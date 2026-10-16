@@ -250,3 +250,21 @@ a {
   margin-top: 0.5rem;
   margin-right: 0.5rem;
 }
+
+.section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.section-head h2 {
+  margin: 0;
+}
+
+.compact {
+  padding: 0.35rem 0.7rem;
+  font-size: 0.8rem;
+}
