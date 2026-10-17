@@ -409,3 +409,61 @@ a {
   padding-left: 1.1rem;
   color: var(--muted);
 }
+
+.extract-panel {
+  margin: 1rem 0 0.25rem;
+  padding: 0.9rem 1rem;
+  border: 1px dashed var(--line);
+  border-radius: 10px;
+  background: #fafbfd;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.extract-title {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.extract-help {
+  margin: 0;
+}
+
+.extract-mode {
+  margin-bottom: 0;
+}
+
+.extract-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.extract-field input,
+.extract-field textarea {
+  font: inherit;
+  font-weight: 400;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.extract-field input:focus,
+.extract-field textarea:focus {
+  outline: 2px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  border-color: var(--accent);
+}
+
+.extract-fail {
+  margin: 0;
+}
+
+.extract-ok {
+  margin: 0;
+  color: #166534;
+  font-size: 0.875rem;
+}
