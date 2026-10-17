@@ -71,7 +71,8 @@ async function liveOpenAI(input: ListingInput): Promise<ListingPack> {
 语气：${input.tone || "专业简洁"}`;
 
   try {
-    const res = await fetch("https://api.openai.com/v1/chat/completions", {
+    const base = (process.env.OPENAI_BASE_URL || "https://api.openai.com/v1").replace(/\/$/, "");
+    const res = await fetch(`${base}/chat/completions`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${key}`,
