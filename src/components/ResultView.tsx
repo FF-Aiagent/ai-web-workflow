@@ -3,7 +3,17 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import type { ListingInput, ListingPack, QuotaState } from "@/lib/types";
+import type {
+  AmazonFields,
+  DtcFields,
+  ListingInput,
+  ListingPack,
+  PlatformBundle,
+  PlatformId,
+  QuotaState,
+  ShopeeFields,
+} from "@/lib/types";
+import { PLATFORM_FIELD_MAP } from "@/lib/types";
 import {
   copyText,
   downloadText,
@@ -11,6 +21,13 @@ import {
   packToMarkdown,
   packToTxt,
 } from "@/lib/export";
+import {
+  AMAZON_TITLE_MAX,
+  PLATFORM_LABEL,
+  amazonTitleHint,
+  formatAllPlatforms,
+  formatPlatformBlock,
+} from "@/lib/platforms";
 import { Disclaimer } from "./Disclaimer";
 import { STORAGE_KEY } from "./WorkflowForm";
 
@@ -20,13 +37,48 @@ type Stored = {
   quota: QuotaState;
 };
 
-type CopyTarget = "copy" | "script" | null;
+type CopyTarget = "platform" | "script" | null;
+
+function emptyAmazon(): AmazonFields {
+  return {
+    title: "",
+    variants: ["", ""],
+    bullets: ["", "", "", "", ""],
+    backendSearchTerms: "",
+  };
+}
+
+function emptyShopee(): ShopeeFields {
+  return { title: "", description: "", keyAttributes: "" };
+}
+
+function emptyDtc(): DtcFields {
+  return {
+    title: "",
+    shortDescription: "",
+    longDescription: "",
+    cta: "",
+  };
+}
+
+function ensurePlatforms(pack: ListingPack): PlatformBundle {
+  if (pack.platforms?.amazon && pack.platforms?.shopee && pack.platforms?.dtc) {
+    return pack.platforms;
+  }
+  // Legacy packs (pre-②): keep script/copy, seed empty platform shells.
+  return {
+    amazon: emptyAmazon(),
+    shopee: emptyShopee(),
+    dtc: emptyDtc(),
+  };
+}
 
 export function ResultView() {
   const router = useRouter();
   const [data, setData] = useState<Stored | null>(null);
-  const [copyEdit, setCopyEdit] = useState("");
+  const [platforms, setPlatforms] = useState<PlatformBundle | null>(null);
   const [scriptEdit, setScriptEdit] = useState("");
+  const [tab, setTab] = useState<PlatformId>("amazon");
   const [copied, setCopied] = useState<CopyTarget>(null);
 
   useEffect(() => {
@@ -37,8 +89,9 @@ export function ResultView() {
     }
     try {
       const parsed = JSON.parse(raw) as Stored;
+      const bundle = ensurePlatforms(parsed.pack);
       setData(parsed);
-      setCopyEdit(parsed.pack.copy);
+      setPlatforms(bundle);
       setScriptEdit(parsed.pack.script);
     } catch {
       router.replace("/");
@@ -52,31 +105,37 @@ export function ResultView() {
   }, [copied]);
 
   const editedPack: ListingPack | null = useMemo(() => {
-    if (!data) return null;
+    if (!data || !platforms) return null;
     return {
       ...data.pack,
-      copy: copyEdit,
+      platforms,
+      copy: formatAllPlatforms(platforms),
       script: scriptEdit,
     };
-  }, [data, copyEdit, scriptEdit]);
+  }, [data, platforms, scriptEdit]);
 
-  /** Persist edits so refresh/再看 still reflects what the seller typed. */
   useEffect(() => {
     if (!data || !editedPack) return;
     const next: Stored = { ...data, pack: editedPack };
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify(next));
   }, [data, editedPack]);
 
-  if (!data || !editedPack) {
+  if (!data || !platforms || !editedPack) {
     return <p className="muted">加载结果…</p>;
   }
 
   const name = data.input.productName || "listing";
+  const fieldHelp = PLATFORM_FIELD_MAP[tab];
 
-  async function onCopy(target: "copy" | "script") {
-    const text = target === "copy" ? copyEdit : scriptEdit;
+  async function onCopyPlatform() {
+    const text = formatPlatformBlock(tab, platforms!);
     const ok = await copyText(text);
-    if (ok) setCopied(target);
+    if (ok) setCopied("platform");
+  }
+
+  async function onCopyScript() {
+    const ok = await copyText(scriptEdit);
+    if (ok) setCopied("script");
   }
 
   function exportMd() {
@@ -103,6 +162,25 @@ export function ResultView() {
     );
   }
 
+  function patchAmazon(patch: Partial<AmazonFields>) {
+    setPlatforms((p) =>
+      p ? { ...p, amazon: { ...p.amazon, ...patch } } : p,
+    );
+  }
+
+  function patchShopee(patch: Partial<ShopeeFields>) {
+    setPlatforms((p) =>
+      p ? { ...p, shopee: { ...p.shopee, ...patch } } : p,
+    );
+  }
+
+  function patchDtc(patch: Partial<DtcFields>) {
+    setPlatforms((p) => (p ? { ...p, dtc: { ...p.dtc, ...patch } } : p));
+  }
+
+  const titleLen = [...platforms.amazon.title].length;
+  const titleWarn = amazonTitleHint(platforms.amazon.title);
+
   return (
     <div className="stack">
       <div className="result-meta">
@@ -115,37 +193,220 @@ export function ResultView() {
       </div>
 
       <p className="muted edit-hint">
-        文案与脚本可直接改；复制与导出（md / json / txt）都会用你改后的内容。
+        各平台字段可直接改；「复制本平台」与导出（md / json /
+        txt）都会用你改后的内容。免责声明与界面一致。
       </p>
 
       <section className="card section">
         <div className="section-head">
-          <h2>① 主图文案</h2>
+          <h2>多平台字段</h2>
           <button
             type="button"
             className="secondary compact"
-            onClick={() => onCopy("copy")}
+            onClick={onCopyPlatform}
           >
-            {copied === "copy" ? "已复制" : "一键复制文案"}
+            {copied === "platform" ? "已复制" : "复制本平台"}
           </button>
         </div>
-        <textarea
-          className="out out-edit"
-          value={copyEdit}
-          onChange={(e) => setCopyEdit(e.target.value)}
-          rows={12}
-          aria-label="主图文案（可编辑）"
-          spellCheck
-        />
+
+        <div className="platform-tabs" role="tablist" aria-label="平台">
+          {(Object.keys(PLATFORM_LABEL) as PlatformId[]).map((id) => (
+            <button
+              key={id}
+              type="button"
+              role="tab"
+              aria-selected={tab === id}
+              className={`platform-tab ${tab === id ? "active" : ""}`}
+              onClick={() => setTab(id)}
+            >
+              {PLATFORM_LABEL[id]}
+            </button>
+          ))}
+        </div>
+
+        <div className="field-map muted" role="note">
+          <strong>{fieldHelp.label} 必填字段：</strong>
+          {fieldHelp.required.join(" · ")}
+        </div>
+
+        {tab === "amazon" && (
+          <div className="platform-fields">
+            <label>
+              标题（≤{AMAZON_TITLE_MAX}）
+              <span
+                className={`char-count ${titleWarn ? "over" : ""}`}
+              >
+                {titleLen}/{AMAZON_TITLE_MAX}
+              </span>
+              <input
+                className={titleWarn ? "input-warn" : ""}
+                value={platforms.amazon.title}
+                onChange={(e) => patchAmazon({ title: e.target.value })}
+                aria-label="Amazon 标题"
+              />
+              {titleWarn && <span className="warn-hint">{titleWarn}</span>}
+            </label>
+            <fieldset className="field-group">
+              <legend>变体名（2–3）</legend>
+              {platforms.amazon.variants.map((v, i) => (
+                <input
+                  key={i}
+                  value={v}
+                  onChange={(e) => {
+                    const next = [...platforms.amazon.variants] as string[];
+                    next[i] = e.target.value;
+                    const variants = (
+                      next.length >= 3
+                        ? [next[0], next[1], next[2]]
+                        : [next[0], next[1]]
+                    ) as AmazonFields["variants"];
+                    patchAmazon({ variants });
+                  }}
+                  aria-label={`变体 ${i + 1}`}
+                  placeholder={`变体 ${i + 1}`}
+                />
+              ))}
+              {platforms.amazon.variants.length < 3 && (
+                <button
+                  type="button"
+                  className="linkish"
+                  onClick={() =>
+                    patchAmazon({
+                      variants: [
+                        platforms.amazon.variants[0],
+                        platforms.amazon.variants[1],
+                        "",
+                      ],
+                    })
+                  }
+                >
+                  + 第三变体
+                </button>
+              )}
+            </fieldset>
+            <fieldset className="field-group">
+              <legend>五点描述</legend>
+              {platforms.amazon.bullets.map((b, i) => (
+                <textarea
+                  key={i}
+                  rows={2}
+                  value={b}
+                  onChange={(e) => {
+                    const bullets = [...platforms.amazon.bullets] as [
+                      string,
+                      string,
+                      string,
+                      string,
+                      string,
+                    ];
+                    bullets[i] = e.target.value;
+                    patchAmazon({ bullets });
+                  }}
+                  aria-label={`Bullet ${i + 1}`}
+                  placeholder={`Bullet ${i + 1}`}
+                />
+              ))}
+            </fieldset>
+            <label>
+              后台搜索词
+              <textarea
+                rows={2}
+                value={platforms.amazon.backendSearchTerms}
+                onChange={(e) =>
+                  patchAmazon({ backendSearchTerms: e.target.value })
+                }
+                aria-label="Amazon 后台搜索词"
+              />
+            </label>
+          </div>
+        )}
+
+        {tab === "shopee" && (
+          <div className="platform-fields">
+            <label>
+              标题
+              <input
+                value={platforms.shopee.title}
+                onChange={(e) => patchShopee({ title: e.target.value })}
+                aria-label="Shopee 标题"
+              />
+            </label>
+            <label>
+              描述
+              <textarea
+                rows={6}
+                value={platforms.shopee.description}
+                onChange={(e) => patchShopee({ description: e.target.value })}
+                aria-label="Shopee 描述"
+              />
+            </label>
+            <label>
+              关键属性
+              <span className="muted field-note">（类目占位可空）</span>
+              <textarea
+                rows={3}
+                value={platforms.shopee.keyAttributes}
+                onChange={(e) =>
+                  patchShopee({ keyAttributes: e.target.value })
+                }
+                aria-label="Shopee 关键属性"
+                placeholder="可留空"
+              />
+            </label>
+          </div>
+        )}
+
+        {tab === "dtc" && (
+          <div className="platform-fields">
+            <label>
+              标题
+              <input
+                value={platforms.dtc.title}
+                onChange={(e) => patchDtc({ title: e.target.value })}
+                aria-label="DTC 标题"
+              />
+            </label>
+            <label>
+              短描述
+              <textarea
+                rows={3}
+                value={platforms.dtc.shortDescription}
+                onChange={(e) =>
+                  patchDtc({ shortDescription: e.target.value })
+                }
+                aria-label="DTC 短描述"
+              />
+            </label>
+            <label>
+              长描述
+              <textarea
+                rows={6}
+                value={platforms.dtc.longDescription}
+                onChange={(e) =>
+                  patchDtc({ longDescription: e.target.value })
+                }
+                aria-label="DTC 长描述"
+              />
+            </label>
+            <label>
+              一行 CTA
+              <input
+                value={platforms.dtc.cta}
+                onChange={(e) => patchDtc({ cta: e.target.value })}
+                aria-label="DTC CTA"
+              />
+            </label>
+          </div>
+        )}
       </section>
 
       <section className="card section">
         <div className="section-head">
-          <h2>② 约 15 秒短视频脚本</h2>
+          <h2>约 15 秒短视频脚本</h2>
           <button
             type="button"
             className="secondary compact"
-            onClick={() => onCopy("script")}
+            onClick={onCopyScript}
           >
             {copied === "script" ? "已复制" : "一键复制脚本"}
           </button>
@@ -154,14 +415,14 @@ export function ResultView() {
           className="out out-edit"
           value={scriptEdit}
           onChange={(e) => setScriptEdit(e.target.value)}
-          rows={14}
+          rows={12}
           aria-label="短视频脚本（可编辑）"
           spellCheck
         />
       </section>
 
       <section className="card section">
-        <h2>③ 主图占位</h2>
+        <h2>主图占位</h2>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={editedPack.imagePlaceholder}

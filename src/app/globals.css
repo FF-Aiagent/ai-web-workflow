@@ -286,3 +286,126 @@ a {
   outline: 2px solid color-mix(in srgb, var(--accent) 35%, transparent);
   border-color: var(--accent);
 }
+
+.platform-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.75rem;
+}
+
+.platform-tab {
+  font: inherit;
+  font-weight: 600;
+  font-size: 0.85rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.platform-tab.active {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: var(--accent);
+}
+
+.field-map {
+  margin: 0 0 0.9rem;
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+.platform-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.platform-fields label,
+.field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.platform-fields input,
+.platform-fields textarea,
+.field-group input,
+.field-group textarea {
+  font: inherit;
+  font-weight: 400;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.platform-fields input:focus,
+.platform-fields textarea:focus,
+.field-group input:focus,
+.field-group textarea:focus {
+  outline: 2px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  border-color: var(--accent);
+}
+
+.field-group {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0.65rem 0.75rem 0.75rem;
+  margin: 0;
+}
+
+.field-group legend {
+  padding: 0 0.25rem;
+  font-size: 0.85rem;
+}
+
+.char-count {
+  float: right;
+  font-weight: 500;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.char-count.over {
+  color: var(--danger);
+}
+
+.input-warn {
+  border-color: var(--danger) !important;
+}
+
+.warn-hint {
+  color: var(--danger);
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.field-note {
+  font-weight: 400;
+  font-size: 0.8rem;
+}
+
+.field-map-box {
+  margin: 0.75rem 0 0;
+  padding: 0.65rem 0.85rem;
+  background: #f0f3f8;
+  border-radius: 8px;
+  font-size: 0.85rem;
+}
+
+.field-map-box summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.field-map-list {
+  margin: 0.5rem 0 0.35rem;
+  padding-left: 1.1rem;
+  color: var(--muted);
+}

@@ -1,4 +1,15 @@
-import type { ListingPack } from "./types";
+import { formatAllPlatforms } from "./platforms";
+import type { ListingPack, PlatformBundle } from "./types";
+
+function platformSection(platforms: PlatformBundle | undefined): string[] {
+  if (!platforms) return [];
+  return [
+    "## 多平台字段",
+    "",
+    formatAllPlatforms(platforms),
+    "",
+  ];
+}
 
 export function packToMarkdown(pack: ListingPack, productName: string): string {
   return [
@@ -7,7 +18,8 @@ export function packToMarkdown(pack: ListingPack, productName: string): string {
     `生成时间：${pack.generatedAt}`,
     `模式：${pack.mode === "live" ? "Live API" : "Mock（无 API Key）"}`,
     "",
-    "## 主图文案",
+    ...platformSection(pack.platforms),
+    "## 主图文案（汇总）",
     "",
     pack.copy,
     "",
@@ -37,14 +49,17 @@ export function packToJson(pack: ListingPack, productName: string): string {
   );
 }
 
-/** Plain-text export: copy + script + disclaimer (Brief-aligned .txt). */
+/** Plain-text export: platforms + script + disclaimer. */
 export function packToTxt(pack: ListingPack, productName: string): string {
+  const platformBlock = pack.platforms
+    ? formatAllPlatforms(pack.platforms)
+    : pack.copy;
   return [
     productName || "跨境 Listing 交付包",
     "",
-    "—— 主图文案 ——",
+    "—— 多平台字段 ——",
     "",
-    pack.copy,
+    platformBlock,
     "",
     "—— 约 15 秒短视频脚本 ——",
     "",

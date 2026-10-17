@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { ListingInput, QuotaState } from "@/lib/types";
+import { PLATFORM_FIELD_MAP } from "@/lib/types";
 import { QuotaBadge } from "./QuotaBadge";
 
 const STORAGE_KEY = "aww_last_result";
@@ -83,6 +84,20 @@ export function WorkflowForm() {
   return (
     <div className="card">
       <QuotaBadge quota={quota} onClaimLocal={claimLocal} />
+      <details className="field-map-box">
+        <summary>多平台必填字段（验收对照）</summary>
+        <ul className="field-map-list">
+          {(Object.keys(PLATFORM_FIELD_MAP) as Array<keyof typeof PLATFORM_FIELD_MAP>).map(
+            (id) => (
+              <li key={id}>
+                <strong>{PLATFORM_FIELD_MAP[id].label}：</strong>
+                {PLATFORM_FIELD_MAP[id].required.join(" · ")}
+              </li>
+            ),
+          )}
+        </ul>
+        <p className="muted">一次生成 Amazon + Shopee + DTC 三版；结果页可切换编辑与按平台复制/导出。</p>
+      </details>
       <form onSubmit={onSubmit} className="form">
         <label>
           商品名 <span className="req">*</span>

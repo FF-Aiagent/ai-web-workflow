@@ -2,7 +2,7 @@
 
 方向 **A**：跨境电商垂直模板工作流。
 
-填商品信息 → 生成 **主图文案** + **约 15 秒短视频脚本** + **主图占位** → 一键复制 / 导出 Markdown · JSON · TXT。
+填商品信息 → 生成 **Amazon / Shopee / DTC 三平台字段** + **约 15 秒短视频脚本** + **主图占位** → 可编辑后一键复制 / 导出 Markdown · JSON · TXT。
 
 ## 快速开始
 
@@ -50,7 +50,7 @@ npm start
 ## 页面
 
 - `/` — 表单
-- `/result` — 三栏结果（文案 / 脚本可编辑 / 图位）+ 一键复制与导出（md/json/txt）均读编辑后内容 + 免责声明
+- `/result` — 多平台字段（Amazon / Shopee / DTC 可切换编辑）+ 脚本可编辑 + 图位；复制与导出按平台分栏，均读编辑后内容 + 免责声明
 - `/paywall` — 付费墙 stub
 
 ## 技术栈
@@ -58,6 +58,17 @@ npm start
 Next.js (App Router) · TypeScript · 简单 CSS · Route Handlers（`/api/generate`、`/api/quota`）
 
 LLM 抽象：`src/lib/generate.ts` → `generateListingPack(input)`。
+
+
+## 多平台字段（Feature ②）
+
+| 平台 | 必填字段 |
+|------|----------|
+| Amazon | 标题（≤75，超限提示）· 变体名 2–3 · 五点 · 后台搜索词 |
+| Shopee | 标题 · 描述 · 关键属性（类目占位可空） |
+| DTC / 独立站 | 标题 · 短描述 · 长描述 · 一行 CTA |
+
+一次生成三版；不做实时词库、自动上架、SP-API。
 
 ## 不做（本轮）
 
