@@ -447,7 +447,8 @@ export function ResultView() {
           </button>
         </div>
         <p className="muted edit-hint">
-          一次出 Hook A/B/C；每条含钩子一句、分镜、口播、CTA。可改；复制本钩子与导出含三钩子编辑态。
+          一次出 Hook A/B/C；每条含钩子一句、分镜、口播、CTA，均可改。「复制本钩子」只复制当前栏；导出
+          md / json / txt 含三钩子的编辑态。
         </p>
         <div className="platform-tabs" role="tablist" aria-label="钩子">
           {([0, 1, 2] as HookTab[]).map((i) => (
