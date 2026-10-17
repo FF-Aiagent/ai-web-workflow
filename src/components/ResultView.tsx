@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import type {
   AmazonFields,
   DtcFields,
+  HookPack,
   ListingInput,
   ListingPack,
   PlatformBundle,
@@ -17,6 +18,7 @@ import { PLATFORM_FIELD_MAP } from "@/lib/types";
 import {
   copyText,
   downloadText,
+  formatOneHook,
   packToJson,
   packToMarkdown,
   packToTxt,
@@ -37,7 +39,8 @@ type Stored = {
   quota: QuotaState;
 };
 
-type CopyTarget = "platform" | "script" | null;
+type CopyTarget = "platform" | "script" | "hook" | null;
+type HookTab = 0 | 1 | 2;
 
 function emptyAmazon(): AmazonFields {
   return {
@@ -61,6 +64,18 @@ function emptyDtc(): DtcFields {
   };
 }
 
+
+function emptyHook(): HookPack {
+  return { hook: "", storyboard: ["", "", ""], voiceover: "", cta: "" };
+}
+
+function ensureHooks(pack: ListingPack): [HookPack, HookPack, HookPack] {
+  if (pack.hooks && pack.hooks.length === 3) {
+    return pack.hooks;
+  }
+  return [emptyHook(), emptyHook(), emptyHook()];
+}
+
 function ensurePlatforms(pack: ListingPack): PlatformBundle {
   if (pack.platforms?.amazon && pack.platforms?.shopee && pack.platforms?.dtc) {
     return pack.platforms;
@@ -77,8 +92,10 @@ export function ResultView() {
   const router = useRouter();
   const [data, setData] = useState<Stored | null>(null);
   const [platforms, setPlatforms] = useState<PlatformBundle | null>(null);
+  const [hooks, setHooks] = useState<[HookPack, HookPack, HookPack] | null>(null);
   const [scriptEdit, setScriptEdit] = useState("");
   const [tab, setTab] = useState<PlatformId>("amazon");
+  const [hookTab, setHookTab] = useState<HookTab>(0);
   const [copied, setCopied] = useState<CopyTarget>(null);
 
   useEffect(() => {
@@ -90,8 +107,10 @@ export function ResultView() {
     try {
       const parsed = JSON.parse(raw) as Stored;
       const bundle = ensurePlatforms(parsed.pack);
+      const hookBundle = ensureHooks(parsed.pack);
       setData(parsed);
       setPlatforms(bundle);
+      setHooks(hookBundle);
       setScriptEdit(parsed.pack.script);
     } catch {
       router.replace("/");
@@ -105,14 +124,15 @@ export function ResultView() {
   }, [copied]);
 
   const editedPack: ListingPack | null = useMemo(() => {
-    if (!data || !platforms) return null;
+    if (!data || !platforms || !hooks) return null;
     return {
       ...data.pack,
       platforms,
+      hooks,
       copy: formatAllPlatforms(platforms),
       script: scriptEdit,
     };
-  }, [data, platforms, scriptEdit]);
+  }, [data, platforms, hooks, scriptEdit]);
 
   useEffect(() => {
     if (!data || !editedPack) return;
@@ -120,7 +140,7 @@ export function ResultView() {
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify(next));
   }, [data, editedPack]);
 
-  if (!data || !platforms || !editedPack) {
+  if (!data || !platforms || !hooks || !editedPack) {
     return <p className="muted">加载结果…</p>;
   }
 
@@ -136,6 +156,21 @@ export function ResultView() {
   async function onCopyScript() {
     const ok = await copyText(scriptEdit);
     if (ok) setCopied("script");
+  }
+
+  async function onCopyHook() {
+    const label = String.fromCharCode(65 + hookTab);
+    const ok = await copyText(formatOneHook(label, hooks![hookTab]));
+    if (ok) setCopied("hook");
+  }
+
+  function patchHook(index: HookTab, patch: Partial<HookPack>) {
+    setHooks((prev) => {
+      if (!prev) return prev;
+      const next = [...prev] as [HookPack, HookPack, HookPack];
+      next[index] = { ...next[index], ...patch };
+      return next;
+    });
   }
 
   function exportMd() {
@@ -402,7 +437,95 @@ export function ResultView() {
 
       <section className="card section">
         <div className="section-head">
-          <h2>约 15 秒短视频脚本</h2>
+          <h2>多钩子脚本包</h2>
+          <button
+            type="button"
+            className="secondary compact"
+            onClick={onCopyHook}
+          >
+            {copied === "hook" ? "已复制" : "复制本钩子"}
+          </button>
+        </div>
+        <p className="muted edit-hint">
+          一次出 Hook A/B/C；每条含钩子一句、分镜、口播、CTA。可改；复制本钩子与导出含三钩子编辑态。
+        </p>
+        <div className="platform-tabs" role="tablist" aria-label="钩子">
+          {([0, 1, 2] as HookTab[]).map((i) => (
+            <button
+              key={i}
+              type="button"
+              role="tab"
+              aria-selected={hookTab === i}
+              className={`platform-tab ${hookTab === i ? "active" : ""}`}
+              onClick={() => setHookTab(i)}
+            >
+              Hook {String.fromCharCode(65 + i)}
+            </button>
+          ))}
+        </div>
+        <div className="platform-fields">
+          <label>
+            钩子一句
+            <input
+              value={hooks[hookTab].hook}
+              onChange={(e) => patchHook(hookTab, { hook: e.target.value })}
+              aria-label={`Hook ${String.fromCharCode(65 + hookTab)} 钩子`}
+            />
+          </label>
+          <fieldset className="field-group">
+            <legend>分镜（3–5 步）</legend>
+            {hooks[hookTab].storyboard.map((step, si) => (
+              <input
+                key={si}
+                value={step}
+                onChange={(e) => {
+                  const storyboard = [...hooks[hookTab].storyboard];
+                  storyboard[si] = e.target.value;
+                  patchHook(hookTab, { storyboard });
+                }}
+                aria-label={`分镜 ${si + 1}`}
+                placeholder={`分镜 ${si + 1}`}
+              />
+            ))}
+            {hooks[hookTab].storyboard.length < 5 && (
+              <button
+                type="button"
+                className="linkish"
+                onClick={() =>
+                  patchHook(hookTab, {
+                    storyboard: [...hooks[hookTab].storyboard, ""],
+                  })
+                }
+              >
+                + 分镜步骤
+              </button>
+            )}
+          </fieldset>
+          <label>
+            口播草稿
+            <textarea
+              rows={4}
+              value={hooks[hookTab].voiceover}
+              onChange={(e) =>
+                patchHook(hookTab, { voiceover: e.target.value })
+              }
+              aria-label="口播草稿"
+            />
+          </label>
+          <label>
+            CTA
+            <input
+              value={hooks[hookTab].cta}
+              onChange={(e) => patchHook(hookTab, { cta: e.target.value })}
+              aria-label="CTA"
+            />
+          </label>
+        </div>
+      </section>
+
+      <section className="card section">
+        <div className="section-head">
+          <h2>汇总脚本（可编辑）</h2>
           <button
             type="button"
             className="secondary compact"
@@ -415,8 +538,8 @@ export function ResultView() {
           className="out out-edit"
           value={scriptEdit}
           onChange={(e) => setScriptEdit(e.target.value)}
-          rows={12}
-          aria-label="短视频脚本（可编辑）"
+          rows={10}
+          aria-label="汇总短视频脚本（可编辑）"
           spellCheck
         />
       </section>

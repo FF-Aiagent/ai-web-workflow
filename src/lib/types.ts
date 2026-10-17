@@ -34,6 +34,19 @@ export type DtcFields = {
   cta: string;
 };
 
+
+/** One short-video hook pack (Feature 备选4). */
+export type HookPack = {
+  /** One-sentence opening hook. */
+  hook: string;
+  /** Storyboard steps, 3–5 lines. */
+  storyboard: string[];
+  /** Voiceover draft. */
+  voiceover: string;
+  /** Call to action. */
+  cta: string;
+};
+
 export type PlatformId = "amazon" | "shopee" | "dtc";
 
 export type PlatformBundle = {
@@ -52,6 +65,8 @@ export type ListingPack = {
   mode: "mock" | "live";
   /** All three platform field sets (Feature ②). */
   platforms: PlatformBundle;
+  /** Three distinct short-video hook packs (Feature 备选4). */
+  hooks: [HookPack, HookPack, HookPack];
 };
 
 export type QuotaState = {
