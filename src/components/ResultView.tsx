@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { ListingInput, ListingPack, QuotaState } from "@/lib/types";
@@ -25,6 +25,8 @@ type CopyTarget = "copy" | "script" | null;
 export function ResultView() {
   const router = useRouter();
   const [data, setData] = useState<Stored | null>(null);
+  const [copyEdit, setCopyEdit] = useState("");
+  const [scriptEdit, setScriptEdit] = useState("");
   const [copied, setCopied] = useState<CopyTarget>(null);
 
   useEffect(() => {
@@ -34,7 +36,10 @@ export function ResultView() {
       return;
     }
     try {
-      setData(JSON.parse(raw) as Stored);
+      const parsed = JSON.parse(raw) as Stored;
+      setData(parsed);
+      setCopyEdit(parsed.pack.copy);
+      setScriptEdit(parsed.pack.script);
     } catch {
       router.replace("/");
     }
@@ -46,15 +51,30 @@ export function ResultView() {
     return () => window.clearTimeout(t);
   }, [copied]);
 
-  if (!data) {
+  const editedPack: ListingPack | null = useMemo(() => {
+    if (!data) return null;
+    return {
+      ...data.pack,
+      copy: copyEdit,
+      script: scriptEdit,
+    };
+  }, [data, copyEdit, scriptEdit]);
+
+  /** Persist edits so refresh/再看 still reflects what the seller typed. */
+  useEffect(() => {
+    if (!data || !editedPack) return;
+    const next: Stored = { ...data, pack: editedPack };
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+  }, [data, editedPack]);
+
+  if (!data || !editedPack) {
     return <p className="muted">加载结果…</p>;
   }
 
-  const { pack, input } = data;
-  const name = input.productName || "listing";
+  const name = data.input.productName || "listing";
 
   async function onCopy(target: "copy" | "script") {
-    const text = target === "copy" ? pack.copy : pack.script;
+    const text = target === "copy" ? copyEdit : scriptEdit;
     const ok = await copyText(text);
     if (ok) setCopied(target);
   }
@@ -62,7 +82,7 @@ export function ResultView() {
   function exportMd() {
     downloadText(
       `${name}-listing.md`,
-      packToMarkdown(pack, name),
+      packToMarkdown(editedPack!, name),
       "text/markdown;charset=utf-8",
     );
   }
@@ -70,7 +90,7 @@ export function ResultView() {
   function exportJson() {
     downloadText(
       `${name}-listing.json`,
-      packToJson(pack, name),
+      packToJson(editedPack!, name),
       "application/json;charset=utf-8",
     );
   }
@@ -78,7 +98,7 @@ export function ResultView() {
   function exportTxt() {
     downloadText(
       `${name}-listing.txt`,
-      packToTxt(pack, name),
+      packToTxt(editedPack!, name),
       "text/plain;charset=utf-8",
     );
   }
@@ -86,13 +106,17 @@ export function ResultView() {
   return (
     <div className="stack">
       <div className="result-meta">
-        <span className={`pill ${pack.mode}`}>
-          {pack.mode === "live" ? "Live API" : "Mock 演示"}
+        <span className={`pill ${editedPack.mode}`}>
+          {editedPack.mode === "live" ? "Live API" : "Mock 演示"}
         </span>
         <span className="muted">
           剩余免费次数：{data.quota.remaining}/{data.quota.max}
         </span>
       </div>
+
+      <p className="muted edit-hint">
+        文案与脚本可直接改；复制与导出（md / json / txt）都会用你改后的内容。
+      </p>
 
       <section className="card section">
         <div className="section-head">
@@ -105,7 +129,14 @@ export function ResultView() {
             {copied === "copy" ? "已复制" : "一键复制文案"}
           </button>
         </div>
-        <pre className="out">{pack.copy}</pre>
+        <textarea
+          className="out out-edit"
+          value={copyEdit}
+          onChange={(e) => setCopyEdit(e.target.value)}
+          rows={12}
+          aria-label="主图文案（可编辑）"
+          spellCheck
+        />
       </section>
 
       <section className="card section">
@@ -119,14 +150,21 @@ export function ResultView() {
             {copied === "script" ? "已复制" : "一键复制脚本"}
           </button>
         </div>
-        <pre className="out">{pack.script}</pre>
+        <textarea
+          className="out out-edit"
+          value={scriptEdit}
+          onChange={(e) => setScriptEdit(e.target.value)}
+          rows={14}
+          aria-label="短视频脚本（可编辑）"
+          spellCheck
+        />
       </section>
 
       <section className="card section">
         <h2>③ 主图占位</h2>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src={pack.imagePlaceholder}
+          src={editedPack.imagePlaceholder}
           alt="主图占位"
           className="placeholder-img"
         />

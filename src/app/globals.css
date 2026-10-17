@@ -268,3 +268,21 @@ a {
   padding: 0.35rem 0.7rem;
   font-size: 0.8rem;
 }
+
+.edit-hint {
+  margin: 0;
+}
+
+.out-edit {
+  display: block;
+  width: 100%;
+  resize: vertical;
+  min-height: 160px;
+  color: var(--ink);
+  line-height: 1.5;
+}
+
+.out-edit:focus {
+  outline: 2px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  border-color: var(--accent);
+}
