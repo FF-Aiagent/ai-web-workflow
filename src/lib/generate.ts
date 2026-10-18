@@ -9,6 +9,7 @@ import type {
   AmazonFields,
   DtcFields,
   ListingInput,
+  APlusModule,
   HookPack,
   ListingPack,
   PlatformBundle,
@@ -91,6 +92,50 @@ function mockPlatforms(input: ListingInput): PlatformBundle {
   return { amazon, shopee, dtc };
 }
 
+
+
+function mockAplus(input: ListingInput): APlusModule[] {
+  const name = input.productName.trim() || "未命名商品";
+  const features = input.keyFeatures.trim() || "轻便、耐用、高性价比";
+  const market = input.targetMarket.trim() || "美国站";
+  const category = input.category.trim() || "通用";
+  const bits = featureBits(features);
+  return [
+    {
+      title: `为什么选择 ${name}`,
+      body: `${name} 面向 ${market} 买家，聚焦「${features}」。用清晰结构讲清价值，方便你放进 A+ 模块。上架前请按站点规范自查表述。`,
+    },
+    {
+      title: `核心卖点：${bits[0]}`,
+      body: `围绕「${bits[0]}」展开使用场景与结果。类目：${category}。保持 2–4 句可读长度，避免堆砌关键词。`,
+    },
+    {
+      title: "怎么用 / 适用谁",
+      body: `适合日常与礼品场景。按你的目标市场 ${market} 调整语气与单位制。需要时可再拆成对比表或 FAQ 模块。`,
+    },
+    {
+      title: "品质与安心",
+      body: `强调材料、工艺与售后预期（勿编造认证）。提醒买家查看规格与注意事项。${name} 文案请再人工终审一遍。`,
+    },
+  ];
+}
+
+function normalizeAplus(
+  raw: Partial<APlusModule>[] | undefined,
+  fallback: APlusModule[],
+): APlusModule[] {
+  const list = Array.isArray(raw) ? raw : [];
+  const out: APlusModule[] = [];
+  for (let i = 0; i < Math.max(list.length, 3); i++) {
+    const fb = fallback[i] || fallback[fallback.length - 1];
+    const r = list[i];
+    const title = (r?.title || fb.title).trim() || fb.title;
+    const body = (r?.body || fb.body).trim() || fb.body;
+    if (title || body) out.push({ title, body });
+  }
+  while (out.length < 3) out.push(fallback[out.length] || { title: `模块 ${out.length + 1}`, body: "待补充正文。" });
+  return out.slice(0, 5);
+}
 
 function mockHooks(input: ListingInput): [HookPack, HookPack, HookPack] {
   const name = input.productName.trim() || "未命名商品";
@@ -180,6 +225,7 @@ function mockScript(input: ListingInput): string {
 function mockPack(input: ListingInput): ListingPack {
   const platforms = mockPlatforms(input);
   const hooks = mockHooks(input);
+  const aplus = mockAplus(input);
   return {
     copy: formatAllPlatforms(platforms),
     script: formatHooksScript(hooks),
@@ -189,6 +235,7 @@ function mockPack(input: ListingInput): ListingPack {
     mode: "mock",
     platforms,
     hooks,
+    aplus,
   };
 }
 
@@ -198,6 +245,7 @@ type LivePlatformsPayload = {
   dtc?: Partial<DtcFields>;
   script?: string;
   hooks?: Partial<HookPack>[];
+  aplus?: Partial<APlusModule>[];
 };
 
 
@@ -260,6 +308,11 @@ async function liveOpenAI(input: ListingInput): Promise<ListingPack> {
     {"hook":"钩子一句","storyboard":["步骤1","步骤2","步骤3"],"voiceover":"口播草稿","cta":"CTA"},
     {"hook":"钩子B","storyboard":["步骤1","步骤2","步骤3","步骤4"],"voiceover":"口播","cta":"CTA"},
     {"hook":"钩子C","storyboard":["步骤1","步骤2","步骤3"],"voiceover":"口播","cta":"CTA"}
+  ],
+  "aplus": [
+    {"title":"模块标题","body":"2–4句正文"},
+    {"title":"模块2","body":"正文"},
+    {"title":"模块3","body":"正文"}
   ]
 }
 商品名：${input.productName}
@@ -309,6 +362,7 @@ async function liveOpenAI(input: ListingInput): Promise<ListingPack> {
 
     const hooksFallback = mockHooks(input);
     const hooks = normalizeHooks(parsed.hooks, hooksFallback);
+    const aplus = normalizeAplus(parsed.aplus, mockAplus(input));
     return {
       copy: formatAllPlatforms(platforms),
       script: parsed.script || formatHooksScript(hooks),
@@ -318,6 +372,7 @@ async function liveOpenAI(input: ListingInput): Promise<ListingPack> {
       mode: "live",
       platforms,
       hooks,
+      aplus,
     };
   } catch (err) {
     console.error("liveOpenAI failed, falling back to mock", err);

@@ -47,6 +47,13 @@ export type HookPack = {
   cta: string;
 };
 
+/** One A+ content module (skeleton text only). */
+export type APlusModule = {
+  title: string;
+  /** 2–4 sentences body. */
+  body: string;
+};
+
 export type PlatformId = "amazon" | "shopee" | "dtc";
 
 export type PlatformBundle = {
@@ -67,6 +74,8 @@ export type ListingPack = {
   platforms: PlatformBundle;
   /** Three distinct short-video hook packs (Feature 备选4). */
   hooks: [HookPack, HookPack, HookPack];
+  /** A+ module copy skeleton, 3–5 modules (no images). */
+  aplus: APlusModule[];
 };
 
 export type QuotaState = {

@@ -1,6 +1,19 @@
 import { formatAllPlatforms } from "./platforms";
-import type { HookPack, ListingPack, PlatformBundle } from "./types";
+import type { APlusModule, HookPack, ListingPack, PlatformBundle } from "./types";
 
+
+
+export function formatAplus(modules: APlusModule[] | undefined): string {
+  if (!modules || modules.length === 0) return "";
+  return modules
+    .map((m, i) => [`【A+ 模块 ${i + 1}】${m.title}`, "", m.body].join("\n"))
+    .join("\n\n");
+}
+
+function aplusSection(modules: APlusModule[] | undefined): string[] {
+  if (!modules || modules.length === 0) return [];
+  return ["## A+ 模块文案骨架", "", formatAplus(modules), ""];
+}
 
 export function formatOneHook(label: string, h: HookPack): string {
   return [
@@ -44,6 +57,7 @@ export function packToMarkdown(pack: ListingPack, productName: string): string {
     `模式：${pack.mode === "live" ? "Live API" : "Mock（无 API Key）"}`,
     "",
     ...platformSection(pack.platforms),
+    ...aplusSection(pack.aplus),
     ...hooksSection(pack.hooks),
     "## 主图文案（汇总）",
     "",
@@ -86,6 +100,10 @@ export function packToTxt(pack: ListingPack, productName: string): string {
     "—— 多平台字段 ——",
     "",
     platformBlock,
+    "",
+    "—— A+ 模块文案骨架 ——",
+    "",
+    formatAplus(pack.aplus) || "（无）",
     "",
     "—— 多钩子脚本包 ——",
     "",

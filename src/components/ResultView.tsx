@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import type {
   AmazonFields,
   DtcFields,
+  APlusModule,
   HookPack,
   ListingInput,
   ListingPack,
@@ -18,6 +19,7 @@ import { PLATFORM_FIELD_MAP } from "@/lib/types";
 import {
   copyText,
   downloadText,
+  formatAplus,
   formatOneHook,
   packToJson,
   packToMarkdown,
@@ -39,7 +41,7 @@ type Stored = {
   quota: QuotaState;
 };
 
-type CopyTarget = "platform" | "script" | "hook" | null;
+type CopyTarget = "platform" | "script" | "hook" | "aplus" | null;
 type HookTab = 0 | 1 | 2;
 
 function emptyAmazon(): AmazonFields {
@@ -69,6 +71,16 @@ function emptyHook(): HookPack {
   return { hook: "", storyboard: ["", "", ""], voiceover: "", cta: "" };
 }
 
+
+function ensureAplus(pack: ListingPack): APlusModule[] {
+  if (pack.aplus && pack.aplus.length >= 3) return pack.aplus.slice(0, 5);
+  return [
+    { title: "", body: "" },
+    { title: "", body: "" },
+    { title: "", body: "" },
+  ];
+}
+
 function ensureHooks(pack: ListingPack): [HookPack, HookPack, HookPack] {
   if (pack.hooks && pack.hooks.length === 3) {
     return pack.hooks;
@@ -93,6 +105,7 @@ export function ResultView() {
   const [data, setData] = useState<Stored | null>(null);
   const [platforms, setPlatforms] = useState<PlatformBundle | null>(null);
   const [hooks, setHooks] = useState<[HookPack, HookPack, HookPack] | null>(null);
+  const [aplus, setAplus] = useState<APlusModule[] | null>(null);
   const [scriptEdit, setScriptEdit] = useState("");
   const [tab, setTab] = useState<PlatformId>("amazon");
   const [hookTab, setHookTab] = useState<HookTab>(0);
@@ -111,6 +124,7 @@ export function ResultView() {
       setData(parsed);
       setPlatforms(bundle);
       setHooks(hookBundle);
+      setAplus(ensureAplus(parsed.pack));
       setScriptEdit(parsed.pack.script);
     } catch {
       router.replace("/");
@@ -124,15 +138,16 @@ export function ResultView() {
   }, [copied]);
 
   const editedPack: ListingPack | null = useMemo(() => {
-    if (!data || !platforms || !hooks) return null;
+    if (!data || !platforms || !hooks || !aplus) return null;
     return {
       ...data.pack,
       platforms,
       hooks,
+      aplus,
       copy: formatAllPlatforms(platforms),
       script: scriptEdit,
     };
-  }, [data, platforms, hooks, scriptEdit]);
+  }, [data, platforms, hooks, aplus, scriptEdit]);
 
   useEffect(() => {
     if (!data || !editedPack) return;
@@ -140,7 +155,7 @@ export function ResultView() {
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify(next));
   }, [data, editedPack]);
 
-  if (!data || !platforms || !hooks || !editedPack) {
+  if (!data || !platforms || !hooks || !aplus || !editedPack) {
     return <p className="muted">加载结果…</p>;
   }
 
@@ -148,9 +163,29 @@ export function ResultView() {
   const fieldHelp = PLATFORM_FIELD_MAP[tab];
 
   async function onCopyPlatform() {
-    const text = formatPlatformBlock(tab, platforms!);
+    let text = formatPlatformBlock(tab, platforms!);
+    if (tab === "amazon" && aplus) {
+      const aplusBlock = formatAplus(aplus);
+      if (aplusBlock) {
+        text = text + "\n\n—— A+ 模块 ——\n\n" + aplusBlock;
+      }
+    }
     const ok = await copyText(text);
     if (ok) setCopied("platform");
+  }
+
+  async function onCopyAplus() {
+    const ok = await copyText(formatAplus(aplus!));
+    if (ok) setCopied("aplus");
+  }
+
+  function patchAplus(index: number, patch: Partial<APlusModule>) {
+    setAplus((prev) => {
+      if (!prev) return prev;
+      const next = [...prev];
+      next[index] = { ...next[index], ...patch };
+      return next;
+    });
   }
 
   async function onCopyScript() {
@@ -433,6 +468,62 @@ export function ResultView() {
             </label>
           </div>
         )}
+      </section>
+
+
+      <section className="card section">
+        <div className="section-head">
+          <h2>A+ 模块文案骨架</h2>
+          <button
+            type="button"
+            className="secondary compact"
+            onClick={onCopyAplus}
+          >
+            {copied === "aplus" ? "已复制" : "复制 A+"}
+          </button>
+        </div>
+        <p className="muted edit-hint">
+          3–5 个纯文本模块（标题 + 正文）。可编辑；导出 md/json/txt 含编辑态。Amazon「复制本平台」也会附带 A+。无真图。
+        </p>
+        <div className="platform-fields">
+          {aplus.map((mod, i) => (
+            <fieldset key={i} className="field-group">
+              <legend>模块 {i + 1}</legend>
+              <label>
+                模块标题
+                <input
+                  value={mod.title}
+                  onChange={(e) => patchAplus(i, { title: e.target.value })}
+                  aria-label={`A+ 模块 ${i + 1} 标题`}
+                />
+              </label>
+              <label>
+                正文（2–4 句）
+                <textarea
+                  rows={4}
+                  value={mod.body}
+                  onChange={(e) => patchAplus(i, { body: e.target.value })}
+                  aria-label={`A+ 模块 ${i + 1} 正文`}
+                />
+              </label>
+            </fieldset>
+          ))}
+          {aplus.length < 5 && (
+            <button
+              type="button"
+              className="linkish"
+              onClick={() =>
+                setAplus((prev) =>
+                  prev && prev.length < 5
+                    ? [...prev, { title: "", body: "" }]
+                    : prev,
+                )
+              }
+            >
+              + 模块
+            </button>
+          )}
+        </div>
       </section>
 
       <section className="card section">
