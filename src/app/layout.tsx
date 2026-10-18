@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { Disclaimer } from "@/components/Disclaimer";
+import { AuthHeader } from "@/components/AuthHeader";
 
 export const metadata: Metadata = {
   title: "跨境交付包 · AI 工作流",
@@ -18,10 +19,15 @@ export default function RootLayout({
       <body>
         <div className="shell">
           <header className="site-header">
-            <h1>跨境交付包</h1>
-            <p className="tagline">
-              垂直工作流 MVP：输入 → 文案 + 15s 脚本 + 图位 → 导出
-            </p>
+            <div className="site-header-row">
+              <div>
+                <h1>跨境交付包</h1>
+                <p className="tagline">
+                  垂直工作流 MVP：输入 → 文案 + 15s 脚本 + 图位 → 导出
+                </p>
+              </div>
+              <AuthHeader />
+            </div>
           </header>
           <main>{children}</main>
           <footer className="site-footer">

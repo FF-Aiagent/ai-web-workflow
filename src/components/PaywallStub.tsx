@@ -15,35 +15,22 @@ export function PaywallStub() {
       .catch(() => null);
   }, []);
 
-  async function claimLocal() {
-    const res = await fetch("/api/quota", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "claim-local" }),
-    });
-    const data = (await res.json()) as QuotaState;
-    setQuota(data);
-  }
-
-  const canUpgrade =
-    quota && !quota.hasLocalId && quota.used < 3 && quota.exhausted;
-
   return (
     <div className="card paywall">
-      <h1>免费额度已用完</h1>
+      <h1>额度已用完</h1>
       <p>
-        当前已用 {quota?.used ?? "—"} / {quota?.max ?? "—"} 次。
-        付费解锁更高额度（定价暂缓，本页仅为占位，不会扣款）。
+        {quota?.authenticated
+          ? `当前余额 ${quota.remaining}。登录账户额度用尽后，请联系工程人工加余额（改库），本页不接入支付。`
+          : `匿名试用 ${quota?.used ?? "—"} / ${quota?.max ?? "—"} 次已用完。登录可领取 10 次账户额度。`}
       </p>
       <ul className="stub-list">
-        <li>订阅 / 买断：待 FF 定价格</li>
-        <li>本页不接入真实支付</li>
-        <li>无水印导出等权益后补</li>
+        <li>无 Stripe / 充值 / 订阅按钮</li>
+        <li>人工加余额：工程在 Supabase SQL 改 profiles.balance</li>
       </ul>
-      {canUpgrade && (
-        <button type="button" className="primary" onClick={claimLocal}>
-          启用本机额度（升至共 3 次）
-        </button>
+      {!quota?.authenticated && (
+        <Link href="/login" className="primary btn-link">
+          去邮箱登录
+        </Link>
       )}
       {quota && !quota.exhausted && (
         <Link href="/" className="primary btn-link">

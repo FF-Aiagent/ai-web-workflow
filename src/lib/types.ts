@@ -78,12 +78,20 @@ export type ListingPack = {
   aplus: APlusModule[];
 };
 
+/** Quota / balance view for header + generate gate. */
 export type QuotaState = {
+  /** anon = cookie 1-try; user = Supabase balance ledger. */
+  mode: "anon" | "user";
   used: number;
   max: number;
   remaining: number;
-  hasLocalId: boolean;
   exhausted: boolean;
+  /** Always false — claim3 / local-id stub retired. */
+  hasLocalId: false;
+  authenticated: boolean;
+  email: string | null;
+  /** False when NEXT_PUBLIC_SUPABASE_* missing. */
+  authConfigured: boolean;
 };
 
 /** QA field map — shown in UI help. */

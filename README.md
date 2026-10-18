@@ -29,6 +29,9 @@ npm start
 |------|------|------|
 | `OPENAI_API_KEY` | 否 | 有则走 OpenAI Chat Completions；无则 **Mock** 确定性文案，UI 可完整演示 |
 | `OPENAI_MODEL` | 否 | 默认 `gpt-4o-mini` |
+| `NEXT_PUBLIC_SUPABASE_URL` | 登录/余额 | Supabase 项目 URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | 登录/余额 | Supabase anon key |
+| `SUPABASE_SERVICE_ROLE_KEY` | 扣费 | 服务端扣减余额（勿暴露到浏览器） |
 
 ## Mock vs Live
 
@@ -39,23 +42,34 @@ npm start
 
 图：始终为静态占位 `/placeholders/product.svg`（真图生成不在本轮范围）。
 
-## 免费额度 / 付费墙
+## 用户 + 余额（Supabase）
 
-- **匿名**（无本机 ID cookie）：最多 **1** 次完整生成。
-- **本机 ID**（首页点「启用本机额度」）：最多 **共 3** 次。
-- 额度用尽 → `/paywall` 占位页（**不扣款**，定价暂缓）。
+- **匿名**：cookie `aww_quota_used`，最多 **1** 次试用。本机 claim3 stub **已退役**。
+- **登录**（邮箱 Magic Link）：注册送 **10** 次；每次 `/api/generate` 成功前原子扣 **1**（`deduct_credit`）。
+- 页头显示余额 / 试用剩余；额度用尽 → `/paywall`（引导登录或人工加余额，**无支付 UI**）。
+- Schema：`supabase/schema.sql`（profiles + credit_ledger + trigger + RPC）。
+- **人工加余额**（工程 SQL，无充值页）：
 
-计数存在 cookie：`aww_quota_used`、`aww_local_id`。
+```sql
+update public.profiles
+set balance = balance + 10, updated_at = now()
+where email = 'user@example.com';
+
+insert into public.credit_ledger (user_id, delta, reason)
+select id, 10, 'manual_topup'
+from public.profiles where email = 'user@example.com';
+```
 
 ## 页面
 
 - `/` — 表单 + 链接/粘贴抽取预填
 - `/result` — 多平台字段（Amazon / Shopee / DTC 可切换编辑）+ 脚本可编辑 + 图位；复制与导出按平台分栏，均读编辑后内容 + 免责声明
-- `/paywall` — 付费墙 stub
+- `/login` — 邮箱 Magic Link
+- `/paywall` — 额度用尽（无支付）
 
 ## 技术栈
 
-Next.js (App Router) · TypeScript · 简单 CSS · Route Handlers（`/api/generate`、`/api/quota`）
+Next.js (App Router) · TypeScript · Supabase Auth/Postgres · Route Handlers（`/api/generate`、`/api/quota`、`/api/auth/*`）
 
 LLM 抽象：`src/lib/generate.ts` → `generateListingPack(input)`。
 
@@ -85,10 +99,10 @@ LLM 抽象：`src/lib/generate.ts` → `generateListingPack(input)`。
 
 ## 不做（本轮）
 
-大全导航、多模型超市、BYOK、飞书/微信、真实支付 / IAP。
+大全导航、多模型超市、BYOK、飞书/微信、真实支付 / IAP / Stripe / 运营后台。
 
 ## 假设
 
 - 首发中文 UI；目标市场字段可填任意站点名。
-- 「本机额度」用 cookie 模拟账号，非真实登录。
+- 未配置 Supabase 时仅匿名 1 次可用；登录需 FF 在 1:1 粘贴密钥。
 - 导出为客户端下载 `.md` / `.json` / `.txt`（文案+脚本+免责）；结果页文案/脚本可改，复制与导出均用改后内容。

@@ -38,16 +38,6 @@ export function WorkflowForm() {
       .catch(() => setQuota(null));
   }, []);
 
-  async function claimLocal() {
-    const res = await fetch("/api/quota", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "claim-local" }),
-    });
-    const data = (await res.json()) as QuotaState;
-    setQuota(data);
-  }
-
   async function onExtract() {
     setExtractError(null);
     setExtractOk(null);
@@ -173,7 +163,7 @@ export function WorkflowForm() {
 
   return (
     <div className="card">
-      <QuotaBadge quota={quota} onClaimLocal={claimLocal} />
+      <QuotaBadge quota={quota} />
       <details className="field-map-box">
         <summary>多平台必填字段（验收对照）</summary>
         <ul className="field-map-list">

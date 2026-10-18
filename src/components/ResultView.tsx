@@ -258,7 +258,9 @@ export function ResultView() {
           {editedPack.mode === "live" ? "Live API" : "Mock 演示"}
         </span>
         <span className="muted">
-          剩余免费次数：{data.quota.remaining}/{data.quota.max}
+          {data.quota.authenticated
+            ? `账户余额：${data.quota.remaining}`
+            : `匿名试用剩余：${data.quota.remaining}/${data.quota.max}`}
         </span>
       </div>
 

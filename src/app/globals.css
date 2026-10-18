@@ -467,3 +467,40 @@ a {
   color: #166534;
   font-size: 0.875rem;
 }
+
+
+.site-header-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem 1.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.site-header-row .tagline {
+  margin-bottom: 0;
+}
+
+.auth-header-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem;
+  font-size: 0.875rem;
+  color: var(--muted);
+  padding-top: 0.15rem;
+}
+
+.auth-balance {
+  white-space: nowrap;
+}
+
+.login-card h1 {
+  margin-top: 0;
+  font-size: 1.25rem;
+}
+
+.login-card .btn-link {
+  margin-top: 0.75rem;
+}
