@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { BackendTermsTool } from "./BackendTermsTool";
 
 const URL =
@@ -45,6 +46,10 @@ export default function Page() {
           <li><strong>Subjective or misleading terms.</strong> Words like &quot;best&quot;, &quot;cheap&quot; or unrelated popular keywords don&apos;t belong here.</li>
         </ul>
       </section>
+
+      <p>
+        <Link href="/">Back to the AI cross-border listing pack generator (homepage)</Link>
+      </p>
     </>
   );
 }
