@@ -104,26 +104,17 @@ export async function deductOneCredit(userId: string): Promise<number | null> {
   return Number(data);
 }
 
-/** Refund 1 after a failed generate (best-effort). */
-export async function refundOneCredit(userId: string): Promise<void> {
-  if (!isSupabaseServiceConfigured()) return;
+/** Refund 1 after a failed generate (atomic via refund_credit RPC; writes 失败退回 ledger row). */
+export async function refundOneCredit(userId: string): Promise<number | null> {
+  if (!isSupabaseServiceConfigured()) return null;
   const admin = createServiceRoleClient();
-  const { data: row } = await admin
-    .from("profiles")
-    .select("balance")
-    .eq("id", userId)
-    .maybeSingle();
-  if (!row) return;
-  await admin
-    .from("profiles")
-    .update({
-      balance: (row.balance as number) + 1,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", userId);
-  await admin.from("credit_ledger").insert({
-    user_id: userId,
-    delta: 1,
-    reason: "generate_refund",
+  const { data, error } = await admin.rpc("refund_credit", {
+    p_user_id: userId,
   });
+  if (error) {
+    console.error("refund_credit failed", error.message);
+    return null;
+  }
+  if (data === null || data === undefined) return null;
+  return Number(data);
 }

@@ -9,6 +9,7 @@ type Row = { id: number; delta: number; reason: string; created_at: string };
 function typeLabel(reason: string, delta: number): string {
   if (reason === "signup_grant") return "注册赠送";
   if (reason === "generate") return "生成扣减";
+  if (reason === "失败退回" || reason === "generate_refund") return "失败退回";
   if (delta > 0) return "人工加余额";
   return reason;
 }
