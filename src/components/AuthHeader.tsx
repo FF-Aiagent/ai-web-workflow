@@ -18,10 +18,10 @@ export function AuthHeader() {
     <div className="auth-header-bar">
       {quota?.authenticated ? (
         <>
-          <Link href="/account" className="auth-balance" title={quota.email ?? undefined}>
+          <span className="auth-balance" title={quota.email ?? undefined}>
             余额 {quota.remaining}
             {quota.email ? ` · ${quota.email}` : ""}
-          </Link>
+          </span>
           <form action="/api/auth/signout" method="post">
             <button type="submit" className="linkish">
               退出

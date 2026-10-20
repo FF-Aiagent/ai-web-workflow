@@ -504,5 +504,3 @@ a {
 .login-card .btn-link {
   margin-top: 0.75rem;
 }
-.ledger-table { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 14px; }
-.ledger-table th, .ledger-table td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #e5e5e5; }
