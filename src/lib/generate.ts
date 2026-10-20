@@ -320,7 +320,13 @@ async function liveOpenAI(input: ListingInput): Promise<ListingPack> {
 类目：${input.category}
 卖点：${input.keyFeatures}
 目标市场：${input.targetMarket}
-语气：${input.tone || "专业简洁"}`;
+语气：${input.tone || "专业简洁"}${
+    input.termsLocale === "en"
+      ? `
+
+重要：amazon.backendSearchTerms 必须用英文（美国站买家搜索用语），全小写、空格分隔、不加逗号，不重复商品名/标题中已有的词，不含任何品牌名（包括竞品），总长度不超过 249 字节。其他字段照常。`
+      : ""
+  }`;
 
   try {
     const base = (

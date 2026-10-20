@@ -5,6 +5,8 @@ export type ListingInput = {
   keyFeatures: string;
   targetMarket: string;
   tone?: string;
+  /** "en" = backend search terms in English (EN tool page). Default: unchanged zh flow. */
+  termsLocale?: "en";
 };
 
 /** Locked required fields per platform (Feature ②). */

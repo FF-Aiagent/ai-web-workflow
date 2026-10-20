@@ -32,6 +32,7 @@ export async function POST(req: Request) {
     keyFeatures: String(body.keyFeatures ?? "").trim(),
     targetMarket: String(body.targetMarket ?? "").trim(),
     tone: body.tone ? String(body.tone).trim() : undefined,
+    termsLocale: body.termsLocale === "en" ? "en" : undefined,
   };
 
   if (!input.productName || !input.keyFeatures) {

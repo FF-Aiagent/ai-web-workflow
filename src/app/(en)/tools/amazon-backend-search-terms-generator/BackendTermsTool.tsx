@@ -25,6 +25,7 @@ export function BackendTermsTool() {
           keyFeatures,
           category,
           targetMarket: "US",
+          termsLocale: "en",
         }),
       });
       if (res.status === 402) {
