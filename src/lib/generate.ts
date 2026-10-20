@@ -1,3 +1,4 @@
+import { fitBackendTerms } from "@/lib/bytes";
 import { DISCLAIMER_ZH } from "./disclaimer";
 import {
   formatAllPlatforms,
@@ -394,5 +395,9 @@ export const listingGenerator: ListingGenerator = new DefaultGenerator();
 export async function generateListingPack(
   input: ListingInput,
 ): Promise<ListingPack> {
-  return listingGenerator.generateListingPack(input);
+  const pack = await listingGenerator.generateListingPack(input);
+  pack.platforms.amazon.backendSearchTerms = fitBackendTerms(
+    pack.platforms.amazon.backendSearchTerms,
+  );
+  return pack;
 }

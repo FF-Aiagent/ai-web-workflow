@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import "./globals.css";
+import "../globals.css";
 import { Disclaimer } from "@/components/Disclaimer";
 import { AuthHeader } from "@/components/AuthHeader";
 
@@ -7,6 +7,7 @@ export const metadata: Metadata = {
   title: "跨境交付包 · AI 工作流",
   description:
     "填商品信息 → 主图文案 + 约15秒短视频脚本 + 主图占位 → 一键导出",
+  metadataBase: new URL("https://ai-web-workflow.vercel.app"),
 };
 
 export default function RootLayout({

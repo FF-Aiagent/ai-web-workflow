@@ -1,5 +1,7 @@
 "use client";
 
+import { ByteCounter } from "@/components/ByteCounter";
+
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -389,6 +391,7 @@ export function ResultView() {
                 }
                 aria-label="Amazon 后台搜索词"
               />
+              <ByteCounter value={platforms.amazon.backendSearchTerms} />
             </label>
           </div>
         )}
