@@ -10,6 +10,22 @@ import {
 import { deductOneCredit, getAuthUser, refundOneCredit } from "@/lib/balance";
 import type { ListingInput } from "@/lib/types";
 
+/** Test-only: force generate throw (after deduct) so refund_credit writes「失败退回」.
+ * Safe for normal users: requires FORCE_GENERATE_FAIL_SECRET header match, OR
+ * FORCE_GENERATE_FAIL=1 together with ?fail=1. Neither alone breaks production. */
+function shouldForceGenerateFail(req: Request): boolean {
+  const secret = process.env.FORCE_GENERATE_FAIL_SECRET?.trim();
+  if (secret) {
+    return req.headers.get("x-force-generate-fail") === secret;
+  }
+  if (process.env.FORCE_GENERATE_FAIL !== "1") return false;
+  try {
+    return new URL(req.url).searchParams.get("fail") === "1";
+  } catch {
+    return false;
+  }
+}
+
 export async function POST(req: Request) {
   const gate = await gateGenerate();
   if (!gate.ok) {
@@ -61,6 +77,9 @@ export async function POST(req: Request) {
 
   let pack;
   try {
+    if (shouldForceGenerateFail(req)) {
+      throw new Error("forced_generate_fail");
+    }
     pack = await generateListingPack(input);
   } catch (err) {
     if (userId) {
