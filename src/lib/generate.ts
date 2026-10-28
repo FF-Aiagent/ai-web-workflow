@@ -11,7 +11,7 @@ import type {
   DtcFields,
   ListingInput,
   APlusModule,
-  HookPack,
+  HookLines,
   ListingPack,
   PlatformBundle,
   ShopeeFields,
@@ -138,65 +138,41 @@ function normalizeAplus(
   return out.slice(0, 5);
 }
 
-function mockHooks(input: ListingInput): [HookPack, HookPack, HookPack] {
-  const name = input.productName.trim() || "未命名商品";
-  const market = input.targetMarket.trim() || "美国站";
-  const features = input.keyFeatures.trim() || "轻便、耐用、高性价比";
-  const category = input.category.trim() || "通用";
-  const bits = featureBits(features);
+const HOOK_MAX = 120;
 
-  const a: HookPack = {
-    hook: `还在为 ${category} 纠结？${name} 专为 ${market} 买家准备。`,
-    storyboard: [
-      "0–3s：产品特写 / 开箱冲击",
-      "3–8s：使用场景快切（2–3 镜）",
-      "8–12s：卖点字幕叠画面",
-      "12–15s：产品 + CTA 字幕定格",
-    ],
-    voiceover: `还在找靠谱的 ${category}？看看 ${name}。${features} —— 现在主页下单。`,
-    cta: `立即了解 ${name} →`,
-  };
-  const b: HookPack = {
-    hook: `3 秒看懂：为什么 ${market} 卖家都在推 ${name}。`,
-    storyboard: [
-      "0–3s：痛点字幕（犹豫/踩坑）",
-      "3–7s：产品入画解决痛点",
-      "7–12s：细节特写 + 卖点 ${bits[0]}",
-      "12–15s：口播 CTA + 链接提示",
-      "可选：对比前后结果一镜",
-    ],
-    voiceover: `别再踩坑。${name} 主打 ${bits[0]}，适合 ${market}。点进主页看详情。`,
-    cta: `主页链接下单 ${name}`,
-  };
-  const c: HookPack = {
-    hook: `如果你只看一条：${name} 的 ${bits[0]} 值不值得买？`,
-    storyboard: [
-      "0–4s：问句钩子大字幕",
-      "4–9s：演示核心卖点",
-      "9–13s：社会证明/场景收尾",
-      "13–15s：CTA 强提示",
-    ],
-    voiceover: `${name}，${features}。想试？简介点链接。`,
-    cta: `马上选购 ${name}`,
-  };
-  return [a, b, c];
+function clipHook(s: string, fallback: string): string {
+  const raw = (s || fallback).trim() || fallback;
+  if ([...raw].length <= HOOK_MAX) return raw;
+  return [...raw].slice(0, HOOK_MAX).join("").trim();
 }
 
-function formatHooksScript(hooks: [HookPack, HookPack, HookPack]): string {
-  return hooks
-    .map((h, i) => {
-      const label = String.fromCharCode(65 + i);
-      return [
-        `【钩子 ${label}】${h.hook}`,
-        "",
-        "分镜：",
-        ...h.storyboard.map((s) => `- ${s}`),
-        "",
-        `口播：${h.voiceover}`,
-        `CTA：${h.cta}`,
-      ].join("\n");
-    })
-    .join("\n\n——\n\n");
+/** M3: 3 distinct English opening hooks (ad / first-3s VO), ≤120 chars. */
+function mockHooks(input: ListingInput): HookLines {
+  const name = input.productName.trim() || "this product";
+  const market = input.targetMarket.trim() || "US shoppers";
+  const features = input.keyFeatures.trim() || "lightweight, durable, great value";
+  const category = input.category.trim() || "everyday essentials";
+  const bits = featureBits(features);
+  const a = clipHook(
+    `Still hunting for the right ${category}? ${name} is built for ${market}.`,
+    "Need a better pick? Try this.",
+  );
+  const b = clipHook(
+    `3 seconds: why ${market} keep choosing ${name} for ${bits[0]}.`,
+    "3 seconds: see why shoppers pick this.",
+  );
+  const c = clipHook(
+    `Only watching one clip? Here's why ${name}'s ${bits[0]} is worth it.`,
+    "One clip: is this worth buying?",
+  );
+  // Ensure pairwise distinct even if inputs collapse.
+  const out: string[] = [a, b, c];
+  for (let i = 1; i < 3; i++) {
+    if (out[i] === out[0] || out[i] === out[i - 1]) {
+      out[i] = clipHook(`${out[i]} (#${i + 1})`, `Hook ${i + 1} for ${name}`);
+    }
+  }
+  return [out[0], out[1], out[2]];
 }
 
 function mockScript(input: ListingInput): string {
@@ -229,7 +205,7 @@ function mockPack(input: ListingInput): ListingPack {
   const aplus = mockAplus(input);
   return {
     copy: formatAllPlatforms(platforms),
-    script: formatHooksScript(hooks),
+    script: mockScript(input),
     imagePlaceholder: "/placeholders/product.svg",
     disclaimer: DISCLAIMER_ZH,
     generatedAt: new Date().toISOString(),
@@ -245,35 +221,27 @@ type LivePlatformsPayload = {
   shopee?: Partial<ShopeeFields>;
   dtc?: Partial<DtcFields>;
   script?: string;
-  hooks?: Partial<HookPack>[];
+  hooks?: (string | { hook?: string })[];
   aplus?: Partial<APlusModule>[];
 };
 
 
-function normalizeHook(raw: Partial<HookPack> | undefined, fallback: HookPack): HookPack {
-  const storyboard = Array.isArray(raw?.storyboard)
-    ? raw!.storyboard!.map((s) => String(s).trim()).filter(Boolean)
-    : [];
-  const steps =
-    storyboard.length >= 3
-      ? storyboard.slice(0, 5)
-      : fallback.storyboard;
-  return {
-    hook: (raw?.hook || fallback.hook).trim() || fallback.hook,
-    storyboard: steps,
-    voiceover: (raw?.voiceover || fallback.voiceover).trim() || fallback.voiceover,
-    cta: (raw?.cta || fallback.cta).trim() || fallback.cta,
-  };
+function coerceHookLine(raw: string | { hook?: string } | undefined, fallback: string): string {
+  if (typeof raw === "string") return clipHook(raw, fallback);
+  if (raw && typeof raw === "object" && typeof raw.hook === "string") {
+    return clipHook(raw.hook, fallback);
+  }
+  return clipHook("", fallback);
 }
 
 function normalizeHooks(
-  raw: Partial<HookPack>[] | undefined,
-  fallback: [HookPack, HookPack, HookPack],
-): [HookPack, HookPack, HookPack] {
+  raw: (string | { hook?: string })[] | undefined,
+  fallback: HookLines,
+): HookLines {
   return [
-    normalizeHook(raw?.[0], fallback[0]),
-    normalizeHook(raw?.[1], fallback[1]),
-    normalizeHook(raw?.[2], fallback[2]),
+    coerceHookLine(raw?.[0], fallback[0]),
+    coerceHookLine(raw?.[1], fallback[1]),
+    coerceHookLine(raw?.[2], fallback[2]),
   ];
 }
 
@@ -304,11 +272,11 @@ async function liveOpenAI(input: ListingInput): Promise<ListingPack> {
     "longDescription": "长描述",
     "cta": "一行行动号召"
   },
-  "script": "可选：汇总脚本纯文本",
+  "script": "可选：中文约15秒短视频脚本纯文本",
   "hooks": [
-    {"hook":"钩子一句","storyboard":["步骤1","步骤2","步骤3"],"voiceover":"口播草稿","cta":"CTA"},
-    {"hook":"钩子B","storyboard":["步骤1","步骤2","步骤3","步骤4"],"voiceover":"口播","cta":"CTA"},
-    {"hook":"钩子C","storyboard":["步骤1","步骤2","步骤3"],"voiceover":"口播","cta":"CTA"}
+    "English hook A ≤120 chars",
+    "English hook B ≤120 chars, distinct angle",
+    "English hook C ≤120 chars, distinct angle"
   ],
   "aplus": [
     {"title":"模块标题","body":"2–4句正文"},
@@ -320,7 +288,9 @@ async function liveOpenAI(input: ListingInput): Promise<ListingPack> {
 类目：${input.category}
 卖点：${input.keyFeatures}
 目标市场：${input.targetMarket}
-语气：${input.tone || "专业简洁"}${
+语气：${input.tone || "专业简洁"}
+
+重要（M3 hooks）：hooks 必须是恰好 3 个英文字符串（广告开场 / 短视频前3秒口播），彼此角度不同、互不雷同，每条不超过 120 个字符；不要中文；不要对象，只要字符串数组。${
     input.termsLocale === "en"
       ? `
 
@@ -372,7 +342,7 @@ async function liveOpenAI(input: ListingInput): Promise<ListingPack> {
     const aplus = normalizeAplus(parsed.aplus, mockAplus(input));
     return {
       copy: formatAllPlatforms(platforms),
-      script: parsed.script || formatHooksScript(hooks),
+      script: parsed.script || mockScript(input),
       imagePlaceholder: "/placeholders/product.svg",
       disclaimer: DISCLAIMER_ZH,
       generatedAt: new Date().toISOString(),

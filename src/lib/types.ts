@@ -37,17 +37,8 @@ export type DtcFields = {
 };
 
 
-/** One short-video hook pack (Feature 备选4). */
-export type HookPack = {
-  /** One-sentence opening hook. */
-  hook: string;
-  /** Storyboard steps, 3–5 lines. */
-  storyboard: string[];
-  /** Voiceover draft. */
-  voiceover: string;
-  /** Call to action. */
-  cta: string;
-};
+/** M3: exactly 3 distinct English ad/VO opening hooks (≤120 chars each). */
+export type HookLines = [string, string, string];
 
 /** One A+ content module (skeleton text only). */
 export type APlusModule = {
@@ -74,8 +65,8 @@ export type ListingPack = {
   mode: "mock" | "live";
   /** All three platform field sets (Feature ②). */
   platforms: PlatformBundle;
-  /** Three distinct short-video hook packs (Feature 备选4). */
-  hooks: [HookPack, HookPack, HookPack];
+  /** M3: three distinct English hooks (≤120 chars). */
+  hooks: HookLines;
   /** A+ module copy skeleton, 3–5 modules (no images). */
   aplus: APlusModule[];
 };

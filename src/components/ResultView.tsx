@@ -9,7 +9,7 @@ import type {
   AmazonFields,
   DtcFields,
   APlusModule,
-  HookPack,
+  HookLines,
   ListingInput,
   ListingPack,
   PlatformBundle,
@@ -43,8 +43,7 @@ type Stored = {
   quota: QuotaState;
 };
 
-type CopyTarget = "platform" | "script" | "hook" | "aplus" | null;
-type HookTab = 0 | 1 | 2;
+type CopyTarget = "platform" | "script" | "hook0" | "hook1" | "hook2" | "aplus" | null;
 
 function emptyAmazon(): AmazonFields {
   return {
@@ -69,10 +68,21 @@ function emptyDtc(): DtcFields {
 }
 
 
-function emptyHook(): HookPack {
-  return { hook: "", storyboard: ["", "", ""], voiceover: "", cta: "" };
+const HOOK_MAX = 120;
+
+function clipHookLine(s: string): string {
+  const t = (s || "").trim();
+  if ([...t].length <= HOOK_MAX) return t;
+  return [...t].slice(0, HOOK_MAX).join("").trim();
 }
 
+function coerceHookLine(raw: unknown): string {
+  if (typeof raw === "string") return clipHookLine(raw);
+  if (raw && typeof raw === "object" && "hook" in raw) {
+    return clipHookLine(String((raw as { hook?: string }).hook ?? ""));
+  }
+  return "";
+}
 
 function ensureAplus(pack: ListingPack): APlusModule[] {
   if (pack.aplus && pack.aplus.length >= 3) return pack.aplus.slice(0, 5);
@@ -83,11 +93,17 @@ function ensureAplus(pack: ListingPack): APlusModule[] {
   ];
 }
 
-function ensureHooks(pack: ListingPack): [HookPack, HookPack, HookPack] {
-  if (pack.hooks && pack.hooks.length === 3) {
-    return pack.hooks;
+/** Accept M3 string[3] or legacy HookPack objects from sessionStorage. */
+function ensureHooks(pack: ListingPack): HookLines {
+  const raw = pack.hooks as unknown;
+  if (Array.isArray(raw) && raw.length >= 3) {
+    return [
+      coerceHookLine(raw[0]),
+      coerceHookLine(raw[1]),
+      coerceHookLine(raw[2]),
+    ];
   }
-  return [emptyHook(), emptyHook(), emptyHook()];
+  return ["", "", ""];
 }
 
 function ensurePlatforms(pack: ListingPack): PlatformBundle {
@@ -106,11 +122,10 @@ export function ResultView() {
   const router = useRouter();
   const [data, setData] = useState<Stored | null>(null);
   const [platforms, setPlatforms] = useState<PlatformBundle | null>(null);
-  const [hooks, setHooks] = useState<[HookPack, HookPack, HookPack] | null>(null);
+  const [hooks, setHooks] = useState<HookLines | null>(null);
   const [aplus, setAplus] = useState<APlusModule[] | null>(null);
   const [scriptEdit, setScriptEdit] = useState("");
   const [tab, setTab] = useState<PlatformId>("amazon");
-  const [hookTab, setHookTab] = useState<HookTab>(0);
   const [copied, setCopied] = useState<CopyTarget>(null);
 
   useEffect(() => {
@@ -195,17 +210,17 @@ export function ResultView() {
     if (ok) setCopied("script");
   }
 
-  async function onCopyHook() {
-    const label = String.fromCharCode(65 + hookTab);
-    const ok = await copyText(formatOneHook(label, hooks![hookTab]));
-    if (ok) setCopied("hook");
+  async function onCopyHook(index: 0 | 1 | 2) {
+    const label = String.fromCharCode(65 + index);
+    const ok = await copyText(formatOneHook(label, hooks![index]));
+    if (ok) setCopied((`hook${index}`) as CopyTarget);
   }
 
-  function patchHook(index: HookTab, patch: Partial<HookPack>) {
+  function patchHookLine(index: 0 | 1 | 2, value: string) {
     setHooks((prev) => {
       if (!prev) return prev;
-      const next = [...prev] as [HookPack, HookPack, HookPack];
-      next[index] = { ...next[index], ...patch };
+      const next = [...prev] as HookLines;
+      next[index] = clipHookLine(value);
       return next;
     });
   }
@@ -533,90 +548,37 @@ export function ResultView() {
 
       <section className="card section">
         <div className="section-head">
-          <h2>多钩子脚本包</h2>
-          <button
-            type="button"
-            className="secondary compact"
-            onClick={onCopyHook}
-          >
-            {copied === "hook" ? "已复制" : "复制本钩子"}
-          </button>
+          <h2>Hooks</h2>
         </div>
         <p className="muted edit-hint">
-          一次出 Hook A/B/C；每条含钩子一句、分镜、口播、CTA，均可改。「复制本钩子」只复制当前栏；导出
-          md / json / txt 含三钩子的编辑态。
+          同一次 generate 给出 3 条互异英文开场钩子（≤120 字符/条，广告 / 短视频前 3 秒口播）。可编辑；每条一键复制；导出 md / json / txt 含编辑后的 hooks[]。不另扣额度。
         </p>
-        <div className="platform-tabs" role="tablist" aria-label="钩子">
-          {([0, 1, 2] as HookTab[]).map((i) => (
-            <button
-              key={i}
-              type="button"
-              role="tab"
-              aria-selected={hookTab === i}
-              className={`platform-tab ${hookTab === i ? "active" : ""}`}
-              onClick={() => setHookTab(i)}
-            >
-              Hook {String.fromCharCode(65 + i)}
-            </button>
-          ))}
-        </div>
         <div className="platform-fields">
-          <label>
-            钩子一句
-            <input
-              value={hooks[hookTab].hook}
-              onChange={(e) => patchHook(hookTab, { hook: e.target.value })}
-              aria-label={`Hook ${String.fromCharCode(65 + hookTab)} 钩子`}
-            />
-          </label>
-          <fieldset className="field-group">
-            <legend>分镜（3–5 步）</legend>
-            {hooks[hookTab].storyboard.map((step, si) => (
-              <input
-                key={si}
-                value={step}
-                onChange={(e) => {
-                  const storyboard = [...hooks[hookTab].storyboard];
-                  storyboard[si] = e.target.value;
-                  patchHook(hookTab, { storyboard });
-                }}
-                aria-label={`分镜 ${si + 1}`}
-                placeholder={`分镜 ${si + 1}`}
+          {([0, 1, 2] as const).map((i) => (
+            <label key={i}>
+              <span className="section-head" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "0.5rem" }}>
+                <span>Hook {String.fromCharCode(65 + i)}</span>
+                <button
+                  type="button"
+                  className="secondary compact"
+                  onClick={() => onCopyHook(i)}
+                >
+                  {copied === (`hook${i}` as CopyTarget) ? "已复制" : "复制"}
+                </button>
+              </span>
+              <textarea
+                rows={2}
+                value={hooks[i]}
+                maxLength={HOOK_MAX}
+                onChange={(e) => patchHookLine(i, e.target.value)}
+                aria-label={`Hook ${String.fromCharCode(65 + i)}`}
+                spellCheck
               />
-            ))}
-            {hooks[hookTab].storyboard.length < 5 && (
-              <button
-                type="button"
-                className="linkish"
-                onClick={() =>
-                  patchHook(hookTab, {
-                    storyboard: [...hooks[hookTab].storyboard, ""],
-                  })
-                }
-              >
-                + 分镜步骤
-              </button>
-            )}
-          </fieldset>
-          <label>
-            口播草稿
-            <textarea
-              rows={4}
-              value={hooks[hookTab].voiceover}
-              onChange={(e) =>
-                patchHook(hookTab, { voiceover: e.target.value })
-              }
-              aria-label="口播草稿"
-            />
-          </label>
-          <label>
-            CTA
-            <input
-              value={hooks[hookTab].cta}
-              onChange={(e) => patchHook(hookTab, { cta: e.target.value })}
-              aria-label="CTA"
-            />
-          </label>
+              <span className="muted" style={{ fontSize: "0.85em" }}>
+                {[...hooks[i]].length}/{HOOK_MAX}
+              </span>
+            </label>
+          ))}
         </div>
       </section>
 

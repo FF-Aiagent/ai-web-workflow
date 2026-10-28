@@ -1,5 +1,5 @@
 import { formatAllPlatforms } from "./platforms";
-import type { APlusModule, HookPack, ListingPack, PlatformBundle } from "./types";
+import type { APlusModule, HookLines, ListingPack, PlatformBundle } from "./types";
 
 
 
@@ -15,28 +15,20 @@ function aplusSection(modules: APlusModule[] | undefined): string[] {
   return ["## A+ 模块文案骨架", "", formatAplus(modules), ""];
 }
 
-export function formatOneHook(label: string, h: HookPack): string {
-  return [
-    `【钩子 ${label}】${h.hook}`,
-    "",
-    "分镜：",
-    ...h.storyboard.map((s) => `- ${s}`),
-    "",
-    `口播：${h.voiceover}`,
-    `CTA：${h.cta}`,
-  ].join("\n");
+export function formatOneHook(label: string, hook: string): string {
+  return `【Hook ${label}】${hook}`;
 }
 
-export function formatAllHooks(hooks: HookPack[] | undefined): string {
+export function formatAllHooks(hooks: HookLines | string[] | undefined): string {
   if (!hooks || hooks.length === 0) return "";
   return hooks
-    .map((h, i) => formatOneHook(String.fromCharCode(65 + i), h))
-    .join("\n\n——\n\n");
+    .map((h, i) => formatOneHook(String.fromCharCode(65 + i), String(h)))
+    .join("\n");
 }
 
-function hooksSection(hooks: HookPack[] | undefined): string[] {
+function hooksSection(hooks: HookLines | string[] | undefined): string[] {
   if (!hooks || hooks.length === 0) return [];
-  return ["## 多钩子脚本包（A/B/C）", "", formatAllHooks(hooks), ""];
+  return ["## Hooks", "", formatAllHooks(hooks), ""];
 }
 
 function platformSection(platforms: PlatformBundle | undefined): string[] {
@@ -105,9 +97,9 @@ export function packToTxt(pack: ListingPack, productName: string): string {
     "",
     formatAplus(pack.aplus) || "（无）",
     "",
-    "—— 多钩子脚本包 ——",
+    "—— Hooks ——",
     "",
-    formatAllHooks(pack.hooks) || pack.script,
+    formatAllHooks(pack.hooks) || "(none)",
     "",
     "—— 免责声明 ——",
     "",
